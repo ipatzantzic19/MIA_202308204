@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { HardDrive, User, Lock, LogIn, AlertCircle } from 'lucide-react';
-import styles from './Login.module.css';
+import styles from '../styles/Login.module.css';
 
 export default function LoginPage() {
   const [username, setUsername] = useState('');

@@ -2,7 +2,10 @@ import { useState, useRef } from 'react';
 import { Upload, Play, Trash2, Terminal, FileText, HardDrive } from 'lucide-react';
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import LoginPage from './pages/Login';
-import styles from './App.module.css';
+import styles from './styles/App.module.css';
+import PanelEditor from './components/PanelEditor';
+import PanelConsola from './components/PanelConsola';
+import InfoCards from './components/InfoCards';
 
 function App() {
   const [inputCommands, setInputCommands] = useState('');
@@ -128,151 +131,72 @@ function App() {
           element={
 
             <div className={styles.appContainer}>
+
               {/* Header */}
               <header className={styles.header}>
-        <div className={styles.headerContainer}>
-          <div className={styles.headerContent}>
-            <div className={styles.logoContainer}>
-              <HardDrive className={styles.logoIcon} />
-              <h1 className={styles.title}>GoDisk</h1>
-            </div>
-            <div className={styles.userInfo}>
-              <Link to="/login" className={styles.userButton}>Iniciar Sesión</Link>
-            </div>
-          </div>
-        </div>
-      </header>
+                <div className={styles.headerContainer}>
+                  <div className={styles.headerContent}>
+                    <div className={styles.logoContainer}>
+                      <HardDrive className={styles.logoIcon} />
+                      <h1 className={styles.title}>GoDisk</h1>
+                    </div>
+                    <div className={styles.userInfo}>
+                      <Link to="/login" className={styles.userButton}>Iniciar Sesión</Link>
+                    </div>
+                  </div>
+                </div>
+              </header>
 
               {/* Main Content */}
               <main className={styles.mainContent}>
-        <div className={styles.gridContainer}>
-          {/* Input Section */}
-          <div className={styles.card}>
-            <div className={styles.cardHeader}>
-              <div className={styles.cardHeaderContent}>
-                <div className={styles.cardTitleContainer}>
-                  <Terminal className={`${styles.cardIcon} text-green-400`} />
-                  <h2 className={styles.cardTitle}>Entrada de Comandos</h2>
+                <div className={styles.gridContainer}>
+                  <PanelEditor
+                    inputCommands={inputCommands}
+                    setInputCommands={setInputCommands}
+                    handleFileUpload={handleFileUpload}
+                    handleExecute={handleExecute}
+                    handleClearInput={handleClearInput}
+                    isExecuting={isExecuting}
+                    fileInputRef={fileInputRef}
+                    fileName={fileName}
+                  />
+
+                  <PanelConsola
+                    outputCommands={outputCommands}
+                    handleClearOutput={handleClearOutput}
+                    styles={styles}
+                  />
+
                 </div>
-                {fileName && (
-                  <span className={styles.fileName}>
-                    <FileText className={styles.fileNameIcon} />
-                    <span>{fileName}</span>
-                  </span>
-                )}
-              </div>
-            </div>
 
-            <div className={styles.cardBody}>
-              <textarea
-                value={inputCommands}
-                onChange={(e) => setInputCommands(e.target.value)}
-                placeholder="# Ingrese sus comandos aquí o cargue un archivo .smia
-# Ejemplo:
-mkdisk -size=3000 -unit=K
-fdisk -size=300 -diskName=VDIC-A.mia -name=Particion1"
-                className={styles.textarea}
-                spellCheck="false"
-              />
+                {/* Info Cards */}
+                <div className={styles.infoCardsContainer}>
+                  <InfoCards Card={{
+                    title: "Comandos Disponibles",
+                    content: "mkdisk, rmdisk, fdisk, mount, mounted, mkfs, login, logout, mkgrp, mkusr, mkfile, mkdir, cat, rep"
+                  }} />
 
-              <div className={styles.buttonGroup}>
-                <input
-                  type="file"
-                  ref={fileInputRef}
-                  onChange={handleFileUpload}
-                  accept=".smia"
-                  className={styles.hiddenInput}
-                />
-                <button
-                  onClick={() => fileInputRef.current?.click()}
-                  className={`${styles.button} ${styles.buttonPrimary}`}
-                >
-                  <Upload className={styles.buttonIcon} />
-                  <span>Cargar Script</span>
-                </button>
+                  <InfoCards Card={{
+                    title: "Formato de Script",
+                    content: "Los scripts deben tener extensión .smia. Use # para comentarios. Los parámetros se separan por espacios."
+                  }} />
 
-                <button
-                  onClick={handleExecute}
-                  disabled={isExecuting || !inputCommands.trim()}
-                  className={`${styles.button} ${styles.buttonSuccess}`}
-                >
-                  <Play className={styles.buttonIcon} />
-                  <span>{isExecuting ? 'Ejecutando...' : 'Ejecutar'}</span>
-                </button>
+                  <InfoCards Card={{
+                    title: "Estado del Sistema",
+                    content: isExecuting ? (
+                      <span className={styles.statusExecuting}>⚡ Ejecutando comandos...</span>
+                    ) : (
+                      <span className={styles.statusReady}>✓ Listo para ejecutar</span>
+                    )
+                  }} />
 
-                <button
-                  onClick={handleClearInput}
-                  className={styles.buttonSecondary}
-                  title="Limpiar entrada"
-                >
-                  <Trash2 className={styles.buttonIcon} />
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* Output Section */}
-          <div className={styles.card}>
-            <div className={styles.cardHeader}>
-              <div className={styles.cardHeaderContent}>
-                <div className={styles.cardTitleContainer}>
-                  <Terminal className={`${styles.cardIcon} text-yellow-400`} />
-                  <h2 className={styles.cardTitle}>Salida de Comandos</h2>
                 </div>
-                <button
-                  onClick={handleClearOutput}
-                  className={styles.clearButton}
-                >
-                  <Trash2 className={styles.buttonIcon} />
-                  <span>Limpiar</span>
-                </button>
-              </div>
+              </main>
             </div>
-
-            <div className={styles.cardBody}>
-              <div className={styles.outputContainer}>
-                <pre className={styles.preformatted}>
-                  {outputCommands || '# Esperando ejecución de comandos...\n# Los resultados aparecerán aquí'}
-                </pre>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Info Cards */}
-        <div className={styles.infoCardsContainer}>
-          <div className={styles.infoCard}>
-            <h3 className={styles.infoCardTitle}>Comandos Disponibles</h3>
-            <p className={styles.infoCardContent}>
-              mkdisk, rmdisk, fdisk, mount, mounted, mkfs, login, logout, mkgrp, mkusr, mkfile, mkdir, cat, rep
-            </p>
-          </div>
-
-          <div className={styles.infoCard}>
-            <h3 className={styles.infoCardTitle}>Formato de Script</h3>
-            <p className={styles.infoCardContent}>
-              Los scripts deben tener extensión .smia. Use # para comentarios. Los parámetros se separan por espacios.
-            </p>
-          </div>
-
-          <div className={styles.infoCard}>
-            <h3 className={styles.infoCardTitle}>Estado del Sistema</h3>
-            <p className={styles.infoCardContent}>
-              {isExecuting ? (
-                <span className={styles.statusExecuting}>⚡ Ejecutando comandos...</span>
-              ) : (
-                <span className={styles.statusReady}>✓ Listo para ejecutar</span>
-              )}
-            </p>
-          </div>
-        </div>
-      </main>
-
-    </div>
           } />
-        </Routes>
-      </Router>
-    );
+      </Routes>
+    </Router>
+  );
 }
 
 export default App;
