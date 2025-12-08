@@ -25,7 +25,7 @@
 }
 
 .logoContainer {
-  @apply flex items-center space-x-3 ;
+  @apply flex items-center space-x-3;
 }
 
 .logoIcon {

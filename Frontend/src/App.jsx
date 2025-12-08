@@ -1,5 +1,7 @@
 import { useState, useRef } from 'react';
 import { Upload, Play, Trash2, Terminal, FileText, HardDrive } from 'lucide-react';
+import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
+import LoginPage from './pages/Login';
 import styles from './App.module.css';
 
 function App() {
@@ -115,31 +117,34 @@ function App() {
   };
 
   return (
-    
-    <div className={styles.appContainer}>
-      {/* Header */}
-      <header className={styles.header}>
+    <Router>
+      <Routes>
+        <Route
+          path="/login"
+          element={<LoginPage />}
+        />
+        <Route
+          path="/"
+          element={
+
+            <div className={styles.appContainer}>
+              {/* Header */}
+              <header className={styles.header}>
         <div className={styles.headerContainer}>
           <div className={styles.headerContent}>
             <div className={styles.logoContainer}>
               <HardDrive className={styles.logoIcon} />
-              <div>
-                <h1 className={styles.title}>GoDisk</h1>
-                <p className={styles.subtitle}>Sistema de Archivos EXT2</p>
-              </div>
+              <h1 className={styles.title}>GoDisk</h1>
             </div>
             <div className={styles.userInfo}>
-              <div className={styles.userInfoText}>
-                <p className={styles.userInfoPrimary}>Universidad San Carlos</p>
-                <p className={styles.userInfoSecondary}>MIA - Proyecto 1</p>
-              </div>
+              <Link to="/login" className={styles.userButton}>Iniciar Sesión</Link>
             </div>
           </div>
         </div>
       </header>
 
-      {/* Main Content */}
-      <main className={styles.mainContent}>
+              {/* Main Content */}
+              <main className={styles.mainContent}>
         <div className={styles.gridContainer}>
           {/* Input Section */}
           <div className={styles.card}>
@@ -263,16 +268,11 @@ fdisk -size=300 -diskName=VDIC-A.mia -name=Particion1"
         </div>
       </main>
 
-      {/* Footer */}
-      <footer className={styles.footer}>
-        <div className={styles.footerContainer}>
-          <p className={styles.footerText}>
-            Proyecto 1 - Manejo e Implementación de Archivos | Ingeniería en Ciencias y Sistemas
-          </p>
-        </div>
-      </footer>
     </div>
-  );
+          } />
+        </Routes>
+      </Router>
+    );
 }
 
 export default App;
