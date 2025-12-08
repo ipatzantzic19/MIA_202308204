@@ -8,8 +8,8 @@ import PanelConsola from './components/PanelConsola';
 import InfoCards from './components/InfoCards';
 
 function App() {
-  const [inputCommands, setInputCommands] = useState('');
-  const [outputCommands, setOutputCommands] = useState('');
+  const [input, setInput] = useState('');
+  const [output, setOutput] = useState('');
   const [isExecuting, setIsExecuting] = useState(false);
   const [fileName, setFileName] = useState('');
   const fileInputRef = useRef(null);
@@ -20,7 +20,7 @@ function App() {
     if (file) {
       // Verificar que sea un archivo .smia
       if (!file.name.endsWith('.smia')) {
-        setOutputCommands(prev =>
+        setOutput(prev =>
           prev + `\n[ERROR] El archivo debe tener extensión .smia\n`
         );
         return;
@@ -29,14 +29,14 @@ function App() {
       const reader = new FileReader();
       reader.onload = (e) => {
         const content = e.target.result;
-        setInputCommands(content);
+        setInput(content);
         setFileName(file.name);
-        setOutputCommands(prev =>
+        setOutput(prev =>
           prev + `\n[INFO] Archivo "${file.name}" cargado exitosamente\n`
         );
       };
       reader.onerror = () => {
-        setOutputCommands(prev =>
+        setOutput(prev =>
           prev + `\n[ERROR] Error al leer el archivo\n`
         );
       };
@@ -46,15 +46,16 @@ function App() {
 
   // Función para ejecutar comandos
   const handleExecute = async () => {
-    if (!inputCommands.trim()) {
-      setOutputCommands(prev =>
+    // Si no existe nada en la entrada
+    if (!input.trim()) {
+      setOutput(prev =>
         prev + `\n[ERROR] No hay comandos para ejecutar\n`
       );
       return;
     }
 
     setIsExecuting(true);
-    setOutputCommands(prev =>
+    setOutput(prev =>
       prev + `\n${'='.repeat(60)}\n[INICIO DE EJECUCIÓN]\n${'='.repeat(60)}\n`
     );
 
@@ -65,18 +66,18 @@ function App() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ commands: inputCommands }),
+        body: JSON.stringify({ commands: input }),
       });
 
       if (response.ok) {
         const data = await response.json();
-        setOutputCommands(prev => prev + data.output + '\n');
+        setOutput(prev => prev + data.output + '\n');
       } else {
         throw new Error('Error en la comunicación con el servidor');
       }
     } catch (error) {
       // Por ahora, simular el procesamiento de comandos
-      const lines = inputCommands.split('\n');
+      const lines = input.split('\n');
       let output = '';
 
       lines.forEach((line, index) => {
@@ -99,10 +100,10 @@ function App() {
         output += `[INFO] Comando enviado al servidor (Backend no conectado)\n\n`;
       });
 
-      setOutputCommands(prev => prev + output);
+      setOutput(prev => prev + output);
     }
 
-    setOutputCommands(prev =>
+    setOutput(prev =>
       prev + `${'='.repeat(60)}\n[FIN DE EJECUCIÓN]\n${'='.repeat(60)}\n`
     );
     setIsExecuting(false);
@@ -110,12 +111,12 @@ function App() {
 
   // Función para limpiar el área de salida
   const handleClearOutput = () => {
-    setOutputCommands('');
+    setOutput('');
   };
 
   // Función para limpiar el área de entrada
   const handleClearInput = () => {
-    setInputCommands('');
+    setInput('');
     setFileName('');
   };
 
@@ -151,8 +152,8 @@ function App() {
               <main className={styles.mainContent}>
                 <div className={styles.gridContainer}>
                   <PanelEditor
-                    inputCommands={inputCommands}
-                    setInputCommands={setInputCommands}
+                    inputCommands={input}
+                    setInputCommands={setInput}
                     handleFileUpload={handleFileUpload}
                     handleExecute={handleExecute}
                     handleClearInput={handleClearInput}
@@ -162,11 +163,9 @@ function App() {
                   />
 
                   <PanelConsola
-                    outputCommands={outputCommands}
+                    outputCommands={output}
                     handleClearOutput={handleClearOutput}
-                    styles={styles}
                   />
-
                 </div>
 
                 {/* Info Cards */}
