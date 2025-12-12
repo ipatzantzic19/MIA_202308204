@@ -60,47 +60,26 @@ function App() {
     );
 
     try {
-      // Aquí se enviará al backend cuando esté listo
-      const response = await fetch('http://localhost:8080/api/execute', {
+      // Enviar los comandos al backend
+      const response = await fetch('http://localhost:9700/commands', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ commands: input }),
+        body: JSON.stringify({ Comandos: input }),
       });
 
       if (response.ok) {
         const data = await response.json();
-        setOutput(prev => prev + data.output + '\n');
+        setOutput(prev => prev + JSON.stringify(data, null, 2));
+        setIsExecuting(false)
       } else {
         throw new Error('Error en la comunicación con el servidor');
       }
     } catch (error) {
-      // Por ahora, simular el procesamiento de comandos
-      const lines = input.split('\n');
-      let output = '';
-
-      lines.forEach((line, index) => {
-        const trimmedLine = line.trim();
-
-        // Ignorar líneas vacías
-        if (!trimmedLine) {
-          output += '\n';
-          return;
-        }
-
-        // Mostrar comentarios
-        if (trimmedLine.startsWith('#')) {
-          output += `${trimmedLine}\n`;
-          return;
-        }
-
-        // Simular procesamiento de comandos (será reemplazado por el backend)
-        output += `[LÍNEA ${index + 1}] Procesando: ${trimmedLine}\n`;
-        output += `[INFO] Comando enviado al servidor (Backend no conectado)\n\n`;
-      });
-
-      setOutput(prev => prev + output);
+      // Reportar el error y dejar que el backend procese los comandos.
+      setOutput(prev => prev + `\n[ERROR] Error en la comunicación con el servidor: ${error.message}\n`);
+      setIsExecuting(false);
     }
 
     setOutput(prev =>

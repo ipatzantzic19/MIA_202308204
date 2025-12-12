@@ -39,7 +39,7 @@ function PanelEditor({
                 <textarea
                     value={inputCommands} // El contenido del textarea está controlado por el estado del componente padre.
                     onChange={(e) => setInputCommands(e.target.value)} // Actualiza el estado cuando el usuario escribe.
-                    placeholder=" Ingrese sus comandos aquí..."
+                    placeholder="# Ingrese sus comandos aquí..."
                     className={styles.textarea}
                     spellCheck="false" // Deshabilita la corrección ortográfica, útil para código.
                 />

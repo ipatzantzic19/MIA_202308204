@@ -3,6 +3,7 @@ package controllers
 import (
 	"Proyecto/comandos/general"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strings"
 )
@@ -126,6 +127,7 @@ func HandleCommand(w http.ResponseWriter, r *http.Request) {
 	salida, ok := tempComandos.Respuesta.(general.SalidaComandoEjecutado)
 	if !ok {
 		// Si hay error en el procesamiento
+		// http.Error(w, "Error al obtener comandos", http.StatusInternalServerError)
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode(
@@ -139,14 +141,16 @@ func HandleCommand(w http.ResponseWriter, r *http.Request) {
 		println(temp) // Imprime: "mkdisk -size=3000 ...", etc.
 	}
 
-	// Aquí irían las llamadas a los procesadores de comandos
-	// por ahora están comentadas porque falta implementar:
-	// - comandos.GlobalCom(ejecutar)       // Router de comandos internos
-	// - obtencionpf.ObtenerMBR_Mounted()   // Obtener MBR del disco
+	errores, mensajes, contadorErrorres := general.GlobalCom(salida.LstComandos)
+	fmt.Println("Errores:", errores, "Mensajes:", mensajes, "Total Errores:", contadorErrorres)
 
-	// Responder al Frontend con la lista de comandos procesados
+	// Actualizar la salida con mensajes y errores de ejecución
+	salida.Mensajes = mensajes
+	salida.Errores = errores
+
+	// Responder al Frontend con la lista de comandos, mensajes y errores de ejecución
 	w.Header().Set("Content-Type", "application/json")
-	err = json.NewEncoder(w).Encode(general.ResultadoSalida("", false, salida.LstComandos))
+	err = json.NewEncoder(w).Encode(general.ResultadoSalida("", false, salida))
 	if err != nil {
 		// Error al codificar la respuesta JSON
 		w.Header().Set("Content-Type", "application/json")

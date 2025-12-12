@@ -9,9 +9,11 @@ type Resultado struct {
 	Respuesta       interface{}
 }
 
-// Estructura para devolver la lista de comandos ejecutados
+// Estructura para devolver la lista de comandos ejecutados y sus mensajes
 type SalidaComandoEjecutado struct {
-	LstComandos []string
+	LstComandos []string `json:"comandos"`
+	Mensajes    []string `json:"mensajes"`
+	Errores     []string `json:"errores"`
 }
 
 // Estructura para manejar el cuerpo de la solicitud API
