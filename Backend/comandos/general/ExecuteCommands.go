@@ -63,29 +63,14 @@ func GlobalCom(lista []string) ([]string, []string, int) {
 		case "disk":
 			color.Cyan("Administración de discos: %v", command)
 			// Enruta los comandos de disco a los manejadores correspondientes.
-			switch command {
-			case "mkdisk":
-				msg, err := adminDisk.DiskCommandProps(strings.ToUpper(command), comandos)
-				if err != nil {
-					color.Red("Error mkdisk: %v", err)
-					errores = append(errores, err.Error())
-					contErrores++
-				} else {
-					color.Green(msg)
-					mensajes = append(mensajes, msg)
-				}
-			/*case "rmdisk":
-			msg, err := RmDisk(comm)
+			msg, err := adminDisk.DiskCommandProps(strings.ToUpper(command), comandos)
 			if err != nil {
-				color.Red("Error rmdisk: %v", err)
+				color.Red("Error "+command+": %v", err)
 				errores = append(errores, err.Error())
 				contErrores++
 			} else {
 				color.Green(msg)
 				mensajes = append(mensajes, msg)
-			}*/
-			default:
-				color.Yellow("Comando de disco no implementado: %v", command)
 			}
 
 		case "reports":

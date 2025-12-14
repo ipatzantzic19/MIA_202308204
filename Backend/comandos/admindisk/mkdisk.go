@@ -9,109 +9,128 @@ import (
 	"strings"
 )
 
-// Values_MKDISK analiza las instrucciones (parámetros) para el comando MKDISK.
-// Valida y extrae los valores de -size, -fit y -unit.
-// Devuelve los valores extraídos o un error si los parámetros son inválidos.
+/*
+MKDISK
+------
+Este comando crea un archivo binario que simula un disco duro.
+- El archivo tendrá extensión .mia
+- El archivo se llena inicialmente con bytes en 0
+- El tamaño físico del archivo dependerá del parámetro -size y -unit
+- Se escribe una estructura MBR al inicio del archivo
+
+Parámetros:
+- size (OBLIGATORIO): tamaño del disco (entero positivo > 0)
+- fit  (OPCIONAL): BF | FF | WF (por defecto FF)
+- unit (OPCIONAL): K | M (por defecto M)
+*/
+
+// Values_MKDISK analiza y valida los parámetros del comando MKDISK.
 func Values_MKDISK(instructions []string) (int32, byte, byte, error) {
-	var _size int32
-	var _fit byte = 'F'  // Valor por defecto para el ajuste: 'F' (First Fit)
-	var _unit byte = 'M' // Valor por defecto para la unidad: 'M' (Megabytes)
-	var sizeFound bool   // Flag para asegurar que el parámetro -size esté presente.
+	var size int32
+	var fit byte = 'F'  // FF = First Fit (por defecto)
+	var unit byte = 'M' // Megabytes por defecto
+	var sizeFound bool
 
-	// Itera sobre cada instrucción (parámetro) para identificar y extraer su valor.
+	// Recorremos cada parámetro recibido
 	for _, valor := range instructions {
-		if strings.HasPrefix(strings.ToLower(valor), "size") {
-			// Extrae el valor de -size.
-			var value = utils.TieneSize("MKDISK", valor)
-			_size = value
+		param := strings.ToLower(strings.TrimSpace(valor))
+
+		// ---------- SIZE (obligatorio) ----------
+		if strings.HasPrefix(param, "size") {
+			size = utils.TieneSize("MKDISK", valor)
 			sizeFound = true
-		} else if strings.HasPrefix(strings.ToLower(valor), "fit") {
-			// Extrae el valor de -fit.
-			var value = utils.TieneFit("MKDISK", valor)
-			_fit = value
-		} else if strings.HasPrefix(strings.ToLower(valor), "unit") {
-			// Extrae el valor de -unit.
-			var value = utils.TieneUnit("mkdisk", valor)
-			_unit = value
-		} else {
-			// Si se encuentra un atributo no reconocido, devuelve un error.
-			return -1, '0', '0', fmt.Errorf("[MKDISK]: Atributo no reconocido: %s", valor)
-		}
-	}
 
-	// Valida que el parámetro -size haya sido proporcionado y que sea un valor positivo.
-	if !sizeFound || _size <= 0 {
-		return -1, '0', '0', fmt.Errorf("[MKDISK]: El atributo -size es obligatorio y debe ser un entero positivo")
-	}
-	// Devuelve los valores validados.
-	return _size, _fit, _unit, nil
-}
-
-// MKDISK_Create se encarga de la creación del archivo de disco.
-// Busca un nombre de archivo disponible (de A.dsk a Z.dsk) y crea el disco.
-// Devuelve un mensaje de éxito o un error si no se puede crear el disco.
-func MKDISK_Create(_size int32, _fit byte, _unit byte) (string, error) {
-	directorio := "VDIC-MIA/Disks/"
-	// Asegura que el directorio base para los discos exista, si no, lo crea.
-	if err := os.MkdirAll(directorio, 0755); err != nil {
-		return "", fmt.Errorf("error al crear directorio '%s': %w", directorio, err)
-	}
-
-	// Itera de la 'A' a la 'Z' para encontrar un nombre de disco disponible.
-	for i := 0; i < 26; i++ {
-		letra := fmt.Sprintf("%c.dsk", 'A'+i)
-		archivo := directorio + letra
-		// Comprueba si el archivo ya existe.
-		if _, err := os.Stat(archivo); os.IsNotExist(err) {
-			// Si el archivo no existe, procede a crearlo.
-			err := CreateFile(archivo, _size, _fit, _unit)
-			if err != nil {
-				// Si hay un error durante la creación, devuelve un mensaje de error detallado.
-				return "", fmt.Errorf("error al crear el disco '%s': %w", letra, err)
+			// ---------- FIT (opcional) ----------
+		} else if strings.HasPrefix(param, "fit") {
+			fit = utils.TieneFit("MKDISK", valor)
+			// Validación explícita
+			if fit != 'B' && fit != 'F' && fit != 'W' {
+				return -1, '0', '0', fmt.Errorf("[MKDISK]: fit inválido (BF | FF | WF)")
 			}
-			// Si la creación es exitosa, retorna el mensaje de éxito.
-			return fmt.Sprintf("[MKDISK]: Disco '%s' Creado -> %d%c", letra, _size, _unit), nil
+
+			// ---------- UNIT (opcional) ----------
+		} else if strings.HasPrefix(param, "unit") {
+			unit = utils.TieneUnit("MKDISK", valor)
+			if unit != 'K' && unit != 'M' {
+				return -1, '0', '0', fmt.Errorf("[MKDISK]: unit inválido (K | M)")
+			}
+
+			// ---------- PARÁMETRO DESCONOCIDO ----------
+		} else {
+			return -1, '0', '0', fmt.Errorf("[MKDISK]: atributo no reconocido: %s", valor)
 		}
 	}
-	// Si el bucle termina, significa que no se encontraron letras disponibles.
-	return "", fmt.Errorf("[MKDISK]: No hay letras de disco disponibles (A-Z)")
+
+	// Validación final del size
+	if !sizeFound || size <= 0 {
+		return -1, '0', '0', fmt.Errorf("[MKDISK]: el parámetro -size es obligatorio y debe ser mayor que 0")
+	}
+
+	return size, fit, unit, nil
 }
 
-// CreateFile crea el archivo físico del disco, lo inicializa con ceros y escribe el MBR.
-// Devuelve un error si alguna de estas operaciones falla.
-func CreateFile(archivo string, _size int32, _fit byte, _unit byte) error {
-	// Crea el archivo en la ruta especificada.
-	file, err := os.Create(archivo)
+// MKDISK_Create crea el disco buscando una letra disponible de A a Z.
+func MKDISK_Create(size int32, fit byte, unit byte) (string, error) {
+	directorio := "VDIC-MIA/Disks/"
+
+	// Recorre letras A-Z
+	for i := 0; i < 26; i++ {
+		nombre := fmt.Sprintf("VDIC-%c.mia", 'A'+i)
+		ruta := directorio + nombre
+
+		// Si el archivo NO existe, se crea
+		if _, err := os.Stat(ruta); os.IsNotExist(err) {
+			if err := CreateFile(ruta, size, fit, unit); err != nil {
+				return "", err
+			}
+			return fmt.Sprintf("[MKDISK]: Disco %s creado correctamente", nombre), nil
+		}
+	}
+
+	return "", fmt.Errorf("[MKDISK]: no hay letras disponibles para crear discos")
+}
+
+// CreateFile crea físicamente el archivo del disco, lo llena con ceros
+// y escribe el MBR al inicio.
+func CreateFile(path string, size int32, fit byte, unit byte) error {
+	file, err := os.Create(path)
 	if err != nil {
-		return fmt.Errorf("no se pudo crear el archivo: %w", err)
+		return fmt.Errorf("[MKDISK]: no se pudo crear el archivo")
 	}
-	defer file.Close() // Asegura que el archivo se cierre al final de la función.
+	defer file.Close()
 
-	var estructura structures.MBR         // Crea una instancia de la estructura MBR.
-	tamanio := utils.Tamano(_size, _unit) // Calcula el tamaño del disco en bytes.
-	estructura.Mbr_tamano = tamanio
-	estructura.Mbr_fecha_creacion = utils.ObFechaInt()      // Asigna la fecha de creación.
-	estructura.Mbr_disk_signature = utils.ObDiskSignature() // Asigna una firma única al disco.
-	estructura.Dsk_fit = _fit                               // Asigna el tipo de ajuste.
-	// Inicializa las particiones del MBR como vacías.
-	for i := 0; i < len(estructura.Mbr_partitions); i++ {
-		estructura.Mbr_partitions[i] = utils.PartitionVacia()
-	}
+	// Conversión del tamaño a bytes
+	tamanioBytes := utils.Tamano(size, unit)
 
-	// Llena el archivo con ceros para reservar el espacio.
-	bytes_llenar := make([]byte, int(tamanio))
-	if _, err := file.Write(bytes_llenar); err != nil {
-		return fmt.Errorf("no se pudo llenar el archivo con ceros: %w", err)
+	// ----------- CREACIÓN DEL MBR -----------
+	var mbr structures.MBR
+	mbr.Mbr_tamano = tamanioBytes
+	mbr.Mbr_fecha_creacion = utils.ObFechaInt()
+	mbr.Mbr_disk_signature = utils.ObDiskSignature()
+	mbr.Dsk_fit = fit
+
+	// Inicializar particiones vacías
+	for i := 0; i < len(mbr.Mbr_partitions); i++ {
+		mbr.Mbr_partitions[i] = utils.PartitionVacia()
 	}
 
-	// Regresa al inicio del archivo para escribir el MBR.
-	if _, err := file.Seek(0, 0); err != nil {
-		return fmt.Errorf("no se pudo posicionar el puntero al inicio del archivo: %w", err)
+	// ----------- LLENAR ARCHIVO CON CEROS -----------
+	bloque := make([]byte, 1024)
+	bytesRestantes := tamanioBytes
+
+	for bytesRestantes > 0 {
+		if bytesRestantes < int32(len(bloque)) {
+			bloque = make([]byte, bytesRestantes)
+		}
+		file.Write(bloque)
+		bytesRestantes -= int32(len(bloque))
 	}
 
-	// Escribe la estructura MBR en formato binario (Little Endian) al inicio del archivo.
-	if err := binary.Write(file, binary.LittleEndian, &estructura); err != nil {
-		return fmt.Errorf("no se pudo escribir la estructura MBR: %w", err)
+	// ----------- ESCRIBIR MBR -----------
+	file.Seek(0, 0)
+	if err := binary.Write(file, binary.LittleEndian, &mbr); err != nil {
+		return fmt.Errorf("[MKDISK]: error al escribir el MBR")
 	}
-	return nil // Retorna nil si todas las operaciones fueron exitosas.
+
+	return nil
 }

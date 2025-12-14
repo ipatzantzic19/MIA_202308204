@@ -62,8 +62,8 @@ func TieneUnit(command string, unit string) byte {
 	if val == "B" {
 		// Restricciones específicas del comando.
 		if command == "MKDISK" {
-			color.Red("[" + command + "]: No tiene Unit Valido")
-			return 'M'
+			color.Red("[" + command + "]: Unit no valida, solo se acepta K o M")
+			return '0'
 		} else if command == "FDISK" {
 			return 'B'
 		} else {
@@ -192,6 +192,20 @@ func TieneNombre(comando string, valor string) string {
 	value := strings.Split(valor, "=")
 	if len(value) < 2 {
 		color.Red("[" + comando + "]: No tiene name Valido")
+		return ""
+	} else {
+		return value[1]
+	}
+}
+
+func TieneDiskName(comando string, valor string) string {
+	if !strings.HasPrefix(strings.ToLower(valor), "diskname=") {
+		color.Red("[" + comando + "]: No tiene diskname o tiene un valor no valido")
+		return ""
+	}
+	value := strings.Split(valor, "=")
+	if len(value) < 2 {
+		color.Red("[" + comando + "]: No tiene diskname Valido")
 		return ""
 	} else {
 		return value[1]

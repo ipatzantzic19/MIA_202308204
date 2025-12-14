@@ -21,17 +21,15 @@ type SalidaComandoEjecutado struct {
 // ResultadoAPI define el formato estándar para todas las respuestas de la API.
 // Esta estructura consistente facilita el manejo de respuestas en el lado del cliente (frontend).
 type ResultadoAPI struct {
-	Error   bool        `json:"error"`   // `true` si la solicitud falló en general, `false` si fue exitosa.
-	Message string      `json:"message"` // Un mensaje general sobre el resultado de la solicitud (ej: "Comandos procesados").
-	Data    interface{} `json:"data"`    // Los datos específicos de la respuesta. Para los comandos, esto contendrá la estructura `SalidaComandoEjecutado`.
+	Error bool        `json:"error"` // `true` si la solicitud falló en general, `false` si fue exitosa.
+	Data  interface{} `json:"data"`  // Los datos específicos de la respuesta. Para los comandos, esto contendrá la estructura `SalidaComandoEjecutado`.
 }
 
 // ResultadoSalida es una función auxiliar para crear y poblar fácilmente una estructura `ResultadoAPI`.
 // Ayuda a estandarizar la creación de respuestas de la API en todo el backend.
 func ResultadoSalida(message string, isError bool, data interface{}) ResultadoAPI {
 	return ResultadoAPI{
-		Message: message, // El mensaje descriptivo.
-		Error:   isError, // El indicador de error.
-		Data:    data,    // Los datos a enviar.
+		Error: isError, // El indicador de error.
+		Data:  data,    // Los datos a enviar.
 	}
 }

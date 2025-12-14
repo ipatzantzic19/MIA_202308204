@@ -51,7 +51,7 @@ function PanelEditor({
                         type="file"
                         ref={fileInputRef} // Se asigna la referencia para poder acceder a este elemento.
                         onChange={handleFileUpload} // Función que se llama al seleccionar un archivo.
-                        accept=".smia" // Filtra los archivos para mostrar solo la extensión .smia.
+                        accept=".mia" // Filtra los archivos para mostrar solo la extensión .smia.
                         className={styles.hiddenInput}
                     />
 
