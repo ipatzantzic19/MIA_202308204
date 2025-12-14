@@ -1,33 +1,37 @@
-// Mensaje es un paquete que contiene estructuras y funciones
-// para manejar resultados de comandos y respuestas API.
+// El paquete general contiene estructuras y funciones de utilidad
+// que son compartidas a través de diferentes partes del sistema de manejo de comandos.
 package general
 
-// Estructuras para manejar resultados de comandos y respuestas API
+// Resultado es una estructura genérica para encapsular el resultado de una operación.
+// Se utiliza internamente para pasar información entre funciones antes de formatear la respuesta final de la API.
 type Resultado struct {
-	StrMensajeError string
-	BlnError        bool
-	Respuesta       interface{}
+	StrMensajeError string      // Mensaje de error, si lo hubo.
+	BlnError        bool        // Un booleano que indica si la operación resultó en un error.
+	Respuesta       interface{} // Contiene los datos de la respuesta exitosa. Es de tipo `interface{}` para ser flexible.
 }
 
-// Estructura para devolver la lista de comandos ejecutados y sus mensajes
+// SalidaComandoEjecutado define la estructura de los datos que se enviarán al frontend
+// después de procesar y ejecutar una lista de comandos.
 type SalidaComandoEjecutado struct {
-	LstComandos []string `json:"comandos"`
-	Mensajes    []string `json:"mensajes"`
-	Errores     []string `json:"errores"`
+	LstComandos []string `json:"comandos"` // La lista de comandos limpios que fueron procesados. `json:"comandos"` es una etiqueta de struct que personaliza el nombre del campo en la salida JSON.
+	Mensajes    []string `json:"mensajes"` // Una lista de mensajes de éxito generados por los comandos.
+	Errores     []string `json:"errores"`  // Una lista de mensajes de error generados por los comandos.
 }
 
-// Estructura para manejar el cuerpo de la solicitud API
+// ResultadoAPI define el formato estándar para todas las respuestas de la API.
+// Esta estructura consistente facilita el manejo de respuestas en el lado del cliente (frontend).
 type ResultadoAPI struct {
-	Error   bool        `json:"error"`
-	Message string      `json:"message"`
-	Data    interface{} `json:"data"`
+	Error   bool        `json:"error"`   // `true` si la solicitud falló en general, `false` si fue exitosa.
+	Message string      `json:"message"` // Un mensaje general sobre el resultado de la solicitud (ej: "Comandos procesados").
+	Data    interface{} `json:"data"`    // Los datos específicos de la respuesta. Para los comandos, esto contendrá la estructura `SalidaComandoEjecutado`.
 }
 
-// Crea una estructura ResultadoAPI para respuestas JSON
+// ResultadoSalida es una función auxiliar para crear y poblar fácilmente una estructura `ResultadoAPI`.
+// Ayuda a estandarizar la creación de respuestas de la API en todo el backend.
 func ResultadoSalida(message string, isError bool, data interface{}) ResultadoAPI {
 	return ResultadoAPI{
-		Message: message,
-		Error:   isError,
-		Data:    data,
+		Message: message, // El mensaje descriptivo.
+		Error:   isError, // El indicador de error.
+		Data:    data,    // Los datos a enviar.
 	}
 }
