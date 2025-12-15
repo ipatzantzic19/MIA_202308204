@@ -11,7 +11,7 @@ import (
 	"github.com/fatih/color"
 )
 
-func ParticionLogica(path string, _size int32, _name []byte, _unit byte, _type byte, _fit byte, _delete string, _add int32) {
+func ParticionLogica(path string, _size int32, _name []byte, _unit byte, _type byte, _fit byte) {
 	if !utils.ExisteArchivo("FDISK", path) {
 		color.Yellow("[FDISK] El disco no existe en la ruta especificada.")
 		return

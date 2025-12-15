@@ -10,7 +10,7 @@ import (
 	"github.com/fatih/color"
 )
 
-func ParticionExtendida(path string, _size int32, _name []byte, _unit byte, _type byte, _fit byte, _delete string, _add int32) {
+func ParticionExtendida(path string, _size int32, _name []byte, _unit byte, _type byte, _fit byte) {
 	if !utils.ExisteArchivo("FDISK", path) {
 		color.Yellow("[FDISK] Disco en la ruta «" + path + "» no existente")
 		return

@@ -1,7 +1,7 @@
 package adminDisk
 
 import (
-	"Proyecto/comandos/particion-fdisk"
+	partition "Proyecto/comandos/particion-fdisk"
 	"fmt"
 	"strings"
 )
@@ -41,10 +41,10 @@ func DiskCommandProps(command string, instructions []string) (string, error) {
 
 	if strings.ToUpper(command) == "FDISK" {
 		// 1. Llama a la función para obtener los parámetros de FDISK.
-		_size, _diskName, _name, _unit, _type, _fit, _delete, _add := partition.Values_FDISK(instructions)
+		_size, _diskName, _name, _unit, _type, _fit := partition.Values_FDISK(instructions)
 
 		// 2. Llama a la función de creación/modificación de la partición.
-		partition.FDISK_Create(_size, _diskName, _name[:], _unit, _type, _fit, _delete, _add)
+		partition.FDISK_Create(_size, _diskName, _name[:], _unit, _type, _fit)
 
 		// 3. Devuelve un mensaje de éxito genérico.
 		return "[FDISK]: Comando ejecutado, revise la consola para más detalles.", nil
