@@ -49,6 +49,17 @@ func DiskCommandProps(command string, instructions []string) (string, error) {
 		// 3. Devuelve un mensaje de éxito genérico.
 		return "[FDISK]: Comando ejecutado, revise la consola para más detalles.", nil
 	}
+	if strings.ToUpper(command) == "MKFS" {
+		// 1. Llama a la función para obtener los parámetros de MKFS.
+		_id, _type, err := Values_MKFS(instructions)
+		if err != nil {
+			return "", fmt.Errorf("[DiskCommandProps]: Error al validar los parámetros de MKFS")
+		}
+
+		// 2. Llama a la función de formateo.
+		MKFS_EXECUTE(_id, _type)
+		return "[MKFS]: Comando ejecutado, revise la consola para más detalles.", nil
+	}
 	if strings.ToUpper(command) == "MOUNT" {
 		// 1. Llama a la función para obtener los parámetros de MOUNT.
 		_diskName, _name, _error := Values_Mount(instructions)
