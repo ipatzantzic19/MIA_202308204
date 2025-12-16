@@ -15,11 +15,7 @@ func SizeContent() int32 { //16bytes
 }
 
 func SizeBloqueCarpeta() int32 { //64 bytes
-
-	a01 := unsafe.Sizeof(structures.BloqueCarpeta{}.B_content[0].B_name) + unsafe.Sizeof(structures.BloqueCarpeta{}.B_content[0].B_inodo)
-	a01 += unsafe.Sizeof(structures.BloqueCarpeta{}.B_content[1].B_name) + unsafe.Sizeof(structures.BloqueCarpeta{}.B_content[1].B_inodo)
-	a01 += unsafe.Sizeof(structures.BloqueCarpeta{}.B_content[2].B_name) + unsafe.Sizeof(structures.BloqueCarpeta{}.B_content[2].B_inodo)
-	a01 += unsafe.Sizeof(structures.BloqueCarpeta{}.B_content[3].B_name) + unsafe.Sizeof(structures.BloqueCarpeta{}.B_content[3].B_inodo)
+	a01 := unsafe.Sizeof(structures.BloqueCarpeta{})
 	return int32(a01)
 }
 

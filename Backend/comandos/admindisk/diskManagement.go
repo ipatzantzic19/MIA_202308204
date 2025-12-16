@@ -50,7 +50,17 @@ func DiskCommandProps(command string, instructions []string) (string, error) {
 		return "[FDISK]: Comando ejecutado, revise la consola para más detalles.", nil
 	}
 	if strings.ToUpper(command) == "MOUNT" {
+		// 1. Llama a la función para obtener los parámetros de MOUNT.
+		_diskName, _name, _error := Values_Mount(instructions)
+		if _error {
+			return "", fmt.Errorf("[DiskCommandProps]: Error al validar los parámetros de MOUNT")
+		}
 
+		// 2. Llama a la función de montaje de la partición.
+		MOUNT_EXECUTE(_diskName, _name[:])
+
+		// 3. Devuelve un mensaje de éxito genérico.
+		return "[MOUNT]: Comando ejecutado, revise la consola para más detalles.", nil
 	}
 
 	// Si el comando no es MKDISK (o cualquier otro comando de disco implementado),

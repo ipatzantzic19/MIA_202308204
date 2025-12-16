@@ -7,21 +7,28 @@ import (
 	"encoding/binary"
 	"os"
 	"reflect"
+	"regexp"
 	"strconv"
 	"strings"
 
 	"github.com/fatih/color"
 )
 
-func Values_Mount(instructions []string) (byte, [16]byte, bool) {
-	var _driveletter byte
+func Values_Mount(instructions []string) (string, [16]byte, bool) {
+	var _diskName string
 	var _name [16]byte
 	var _error = false
 	for _, valor := range instructions {
-		if strings.HasPrefix(strings.ToLower(valor), "driveletter") {
-			var value = utils.TieneDriveLetter("MOUNT", valor)
-			_driveletter = value
+		if strings.HasPrefix(strings.ToLower(valor), "diskname") {
+			// Llama a la función auxiliar para validar y extraer el nombre del disco
+			_diskName = utils.TieneDiskName("MOUNT", valor)
+			if _diskName == "" {
+				color.Red("[MOUNT]: Error en el parametro DiskName")
+				_error = true
+				break
+			}
 		} else if strings.HasPrefix(strings.ToLower(valor), "name") {
+
 			var value = utils.TieneNombre("MOUNT", valor)
 			if len(value) > 16 {
 				color.Red("[MOUNT]: El nombre no puede ser mayor a 16 caracteres")
@@ -32,15 +39,35 @@ func Values_Mount(instructions []string) (byte, [16]byte, bool) {
 			}
 		} else {
 			color.Yellow("[MOUNT]: Atributo no reconocido")
+			_error = true
+			break
 		}
 	}
-	return _driveletter, _name, _error
+	return _diskName, _name, _error
 }
 
-func MOUNT_EXECUTE(_driveletter byte, _name []byte) {
-	path := "VDIC-MIA/Disks/" + string(_driveletter) + ".mia"
+func MOUNT_EXECUTE(diskName string, _name []byte) {
+	path := "VDIC-MIA/Disks/" + diskName
 	if !utils.ExisteArchivo("MOUNT", path) {
 		color.Yellow("[MOUNT]: No existe el disco")
+		return
+	}
+
+	//Obtenemos los ultimos dos digitos del carnet
+	carnet := "202308204"
+	re := regexp.MustCompile(`\d{2}$`)
+	match := re.FindStringSubmatch(carnet)
+	hexadecimal := ""
+	if len(match) > 0 {
+		decimal, err := strconv.Atoi(match[0])
+		if err != nil {
+			panic(err)
+		}
+		hexadecimal = strconv.FormatInt(int64(decimal), 16)
+		color.Cyan("[MOUNT]: Carnet en hexadecimal: " + hexadecimal)
+
+	} else {
+		color.Red("[MOUNT]: Error al obtener los ultimos dos digitos del carnet")
 		return
 	}
 
@@ -55,16 +82,25 @@ func MOUNT_EXECUTE(_driveletter byte, _name []byte) {
 	}
 
 	//verificar que exista la particion en la lista
-	numero := int32(1)
-	contador := int32(1)
+	contador := 1
+	var driveLetter byte
+	re = regexp.MustCompile(`VDIC-([A-Z])\.mia`)
+	match = re.FindStringSubmatch(diskName)
+	if len(match) > 1 {
+		driveLetter = match[1][0]
+	} else {
+		color.Red("[MOUNT]: Error al obtener la letra del disco")
+		return
+	}
+
 	for _, disco := range global.Mounted_Partitions {
-		if disco.DriveLetter == _driveletter {
+		if disco.Path == path {
 			if disco.Es_Particion_L {
 				if utils.ToString(disco.Particion_L.Name[:]) == utils.ToString(_name) {
 					color.Red("[Mount]: Particion (logica) ya montada -> " + utils.ToString(_name))
 					return
 				}
-			} else if disco.Es_Particion_P {
+			} else {
 				if utils.ToString(disco.Particion_P.Part_name[:]) == utils.ToString(_name) {
 					color.Red("[Mount]: Particion (primaria) ya montada -> " + utils.ToString(_name))
 					return
@@ -73,12 +109,11 @@ func MOUNT_EXECUTE(_driveletter byte, _name []byte) {
 			contador++
 		}
 	}
-	numero = contador
 
 	mount_temp := global.ParticionesMontadas{}
-	nombre_part := string(_driveletter) + strconv.Itoa(int(numero)) + "51"
+	nombre_part := hexadecimal + strconv.Itoa(contador) + string(driveLetter)
 	nombre_bytes := utils.IDParticionByte(nombre_part)
-	mount_temp.DriveLetter = _driveletter
+	mount_temp.DriveLetter = driveLetter
 	mount_temp.ID_Particion = nombre_bytes
 	mount_temp.Path = path
 
@@ -89,10 +124,10 @@ func MOUNT_EXECUTE(_driveletter byte, _name []byte) {
 		color.Red("[Mount]: Error al abrir archivo")
 		return
 	}
+	defer file.Close()
 
 	inicio := int32(0)
 
-	// Caso de ser particion primaria
 	particion := structures.Partition{}
 	if temp, ok := conjunto[0].(structures.Partition); ok {
 		v := reflect.ValueOf(temp)
@@ -102,23 +137,27 @@ func MOUNT_EXECUTE(_driveletter byte, _name []byte) {
 			return
 		}
 
-		// Inicio SB
+		if particion.Part_type != 'P' {
+			color.Red("[Mount]: Solo se pueden montar particiones primarias -> " + utils.ToString(_name))
+			return
+		}
+
 		inicio = particion.Part_start
-		// Verificacion
 		mount_temp.Es_Particion_P = true
 		mount_temp.Es_Particion_L = false
 		particion.Part_id = nombre_bytes
 		mount_temp.Type = 'P'
-		particion.Part_status = 0
+		particion.Part_status = '1' // 1 = mounted
 		mount_temp.Particion_P = particion
 		count := 0
-		for _, c := range mbr.Mbr_partitions {
-			if utils.ToString(c.Part_name[:]) == utils.ToString(_name) {
+		for i, p := range mbr.Mbr_partitions {
+			if utils.ToString(p.Part_name[:]) == utils.ToString(_name) {
+				mbr.Mbr_partitions[i].Part_id = nombre_bytes
+				mbr.Mbr_partitions[i].Part_status = '1'
 				break
 			}
 			count++
 		}
-		mbr.Mbr_partitions[count] = particion
 
 		if _, err := file.Seek(0, 0); err != nil {
 			color.Red("[Mount]: Error en mover puntero")
@@ -128,33 +167,10 @@ func MOUNT_EXECUTE(_driveletter byte, _name []byte) {
 			color.Red("[Mount]: Error en la escritura del MBR")
 			return
 		}
+	} else {
+		color.Red("[Mount]: La particion encontrada no es primaria.")
+		return
 	}
-
-	// Caso de ser particion logica
-	// logica := structures.EBR{}
-	// if temp, ok := conjunto[0].(structures.EBR); ok {
-	// 	v := reflect.ValueOf(temp)
-	// 	reflect.ValueOf(&logica).Elem().Set(v)
-
-	// 	// Inicio SB
-	// 	inicio = logica.Part_start + size.SizeEBR()
-	// 	// Verificacion
-	// 	mount_temp.Es_Particion_P = false
-	// 	mount_temp.Es_Particion_L = true
-	// 	//id no existe en ebr
-	// 	mount_temp.Type = 'L'
-	// 	logica.Part_mount = 0
-	// 	mount_temp.Particion_L = logica
-
-	// 	if _, err := file.Seek(int64(logica.Part_start), 0); err != nil {
-	// 		color.Red("[Mount]: Error en mover puntero")
-	// 		return
-	// 	}
-	// 	if err := binary.Write(file, binary.LittleEndian, &logica); err != nil {
-	// 		color.Red("[Mount]: Error en la escritura del EBR")
-	// 		return
-	// 	}
-	// }
 
 	global.Mounted_Partitions = append(global.Mounted_Partitions, mount_temp)
 	superblock := structures.SuperBloque{}
@@ -180,6 +196,4 @@ func MOUNT_EXECUTE(_driveletter byte, _name []byte) {
 	}
 
 	color.Green("[Mount]: Particion «" + utils.ToString(_name) + "» montada - (id) -> [" + nombre_part + "]")
-	file.Close()
-	file = nil
 }
