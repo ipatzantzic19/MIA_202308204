@@ -82,6 +82,9 @@ func main() {
 	// Si ya existen, las saltea; si no, las crea
 	general.CrearCarpeta()
 
+	// Carga las particiones que ya estaban montadas desde los archivos de disco.
+	general.LoadMountedPartitions()
+
 	// Funciones futuras comentadas (para funcionalidades posteriores):
 	// obtencionpf.ObtenerMBR_Mounted()         // Obtener MBR
 	// obtencionpf.MostrarParticionesMontadas()  // Mostrar particiones

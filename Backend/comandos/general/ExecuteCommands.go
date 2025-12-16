@@ -23,17 +23,18 @@ var commandGroups = map[string][]string{
 // Recibe un comando como cadena y devuelve el grupo al que pertenece, el comando específico,
 // un booleano que indica si hubo un error, y un mensaje de error si es necesario.
 func detectGroup(cmd string) (string, string, bool, string) {
-	cmdLower := strings.ToLower(cmd) // Convierte el comando a minúsculas.
+	cmdLower := strings.ToLower(strings.TrimSpace(cmd))
+	cmdName := strings.Fields(cmdLower)[0] // Obtiene el nombre del comando
+
 	// Itera sobre el mapa commandGroups para encontrar a qué grupo pertenece el comando.
 	for group, cmds := range commandGroups {
 		for _, prefix := range cmds {
-			if strings.HasPrefix(cmdLower, prefix) {
-				return group, prefix, false, "" // Devuelve el grupo, el comando, y sin error.
+			if cmdName == prefix {
+				return group, prefix, false, ""
 			}
 		}
 	}
-
-	return "", "", true, "Comando no reconocido" // Si no se encuentra el comando, devuelve un error.
+	return "", "", true, "Comando no reconocido"
 }
 
 // GlobalCom procesa una lista de comandos, los ejecuta y devuelve los resultados.

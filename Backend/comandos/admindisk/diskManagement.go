@@ -62,6 +62,10 @@ func DiskCommandProps(command string, instructions []string) (string, error) {
 		// 3. Devuelve un mensaje de éxito genérico.
 		return "[MOUNT]: Comando ejecutado, revise la consola para más detalles.", nil
 	}
+	if strings.ToUpper(command) == "MOUNTED" {
+		MOUNTED_EXECUTE()
+		return "[MOUNTED]: Comando ejecutado, revise la consola para más detalles.", nil
+	}
 
 	// Si el comando no es MKDISK (o cualquier otro comando de disco implementado),
 	// se devuelve un error indicando que el comando no está implementado.
