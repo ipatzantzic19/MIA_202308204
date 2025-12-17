@@ -39,14 +39,14 @@ func Values_LOGIN(instructions []string) (global.Usuario, bool) {
 	}
 
 	// Validar que los parámetros obligatorios no estén vacíos y tengan una longitud adecuada
-	if id == "" || len(id) != 4 {
-		color.Red("[LOGIN]: El parámetro '-id' es obligatorio y debe tener 4 caracteres.")
+	if id == "" {
+		color.Red("[LOGIN]: El parámetro '-id' es obligatorii")
 		return user_temp, false
-	} else if password == "" || len(password) > 10 {
-		color.Red("[LOGIN]: El parámetro '-pass' es obligatorio y no debe exceder los 10 caracteres.")
+	} else if password == "" {
+		color.Red("[LOGIN]: El parámetro '-pass' es obligatorio")
 		return user_temp, false
-	} else if usuario == "" || len(usuario) > 10 {
-		color.Red("[LOGIN]: El parámetro '-user' es obligatorio y no debe exceder los 10 caracteres.")
+	} else if usuario == "" {
+		color.Red("[LOGIN]: El parámetro '-user' es obligatorio")
 		return user_temp, false
 	}
 
