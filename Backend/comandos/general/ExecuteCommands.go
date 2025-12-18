@@ -101,7 +101,11 @@ func GlobalCom(lista []string) ([]string, []string, int) {
 			}
 
 		case "groups":
-			color.White("Administración de Grrupos: %v", command)
+			color.White("Administración de Grupos: %v", command)
+			if !adminusers.GroupCommandProps(command, comandos) {
+				color.Red("Error en comando de grupo: %v", command)
+				contErrores++
+			}
 		}
 	}
 

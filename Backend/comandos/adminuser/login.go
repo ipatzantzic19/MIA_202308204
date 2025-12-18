@@ -38,7 +38,7 @@ func Values_LOGIN(instructions []string) (global.Usuario, bool) {
 		}
 	}
 
-	// Validar que los parámetros obligatorios no estén vacíos y tengan una longitud adecuada
+	// Validar que los parámetros obligatorios no estén vacíos
 	if id == "" {
 		color.Red("[LOGIN]: El parámetro '-id' es obligatorii")
 		return user_temp, false
