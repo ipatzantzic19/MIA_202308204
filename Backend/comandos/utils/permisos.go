@@ -15,6 +15,14 @@ func TieneRPermitionsFile(comando string, valor string) bool {
 	return true
 }
 
+func TienePPermitionsFile(comando string, valor string) bool {
+	if !strings.HasPrefix(strings.ToLower(valor), "p") {
+		color.Red("[" + comando + "]: No tiene p o tiene un valor no valido")
+		return false
+	}
+	return true
+}
+
 func TienePathFilePermitions(comando string, valor string) string {
 	if !strings.HasPrefix(strings.ToLower(valor), "path=") {
 		color.Red("[" + comando + "]: No tiene path o tiene un valor no valido")

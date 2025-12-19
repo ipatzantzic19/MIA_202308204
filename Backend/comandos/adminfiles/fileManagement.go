@@ -20,12 +20,12 @@ func FilesCommandProps(command string, props []string) (string, error) {
 		return "Comando 'mkfile' ejecutado", nil
 
 	case "mkdir":
-		// Lógica para el comando 'mkdir'.
-		// Similar a 'mkfile', actualmente es una simulación.
-		// TODO: Implementar la lógica real para crear un directorio dentro del sistema de archivos del disco virtual.
-		fmt.Println(">> Recibido comando 'mkdir'")
-		fmt.Println(">> Propiedades recibidas: ", props)
-		return "Comando 'mkdir' procesado exitosamente (simulación)", nil
+		path, p, valid := Values_MKDIR(props)
+		if !valid {
+			return "", fmt.Errorf("parámetros de 'mkdir' no válidos")
+		}
+		MKDIR_EXECUTE(path, p)
+		return "[MKDIR]: Comando ejecutado", nil
 
 	default:
 		// Si el comando no es 'mkfile' ni 'mkdir', se retorna un error para indicar que no es un comando de archivos válido.
