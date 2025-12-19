@@ -1,4 +1,4 @@
-package adminusers
+package admingroup
 
 import (
 	"Proyecto/Estructuras/size"

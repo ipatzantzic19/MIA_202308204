@@ -2,6 +2,7 @@ package general
 
 import (
 	adminDisk "Proyecto/comandos/admindisk"
+	admingroup "Proyecto/comandos/admingroup"
 	adminusers "Proyecto/comandos/adminuser"
 	"Proyecto/comandos/commandGroups/files"
 	"strings"
@@ -102,7 +103,7 @@ func GlobalCom(lista []string) ([]string, []string, int) {
 
 		case "groups":
 			color.White("Administración de Grupos: %v", command)
-			if !adminusers.GroupCommandProps(command, comandos) {
+			if !admingroup.GroupCommandProps(command, comandos) {
 				color.Red("Error en comando de grupo: %v", command)
 				contErrores++
 			}
