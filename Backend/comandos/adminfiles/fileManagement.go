@@ -12,12 +12,12 @@ func FilesCommandProps(command string, props []string) (string, error) {
 	// Se convierte el comando a minúsculas para un manejo de casos uniforme y no sensible a mayúsculas.
 	switch strings.ToLower(command) {
 	case "mkfile":
-		// Lógica para el comando 'mkfile'.
-		// En esta fase, es una simulación que confirma la recepción del comando y sus propiedades.
-		// TODO: Implementar la lógica real para crear un archivo dentro del sistema de archivos del disco virtual.
-		fmt.Println(">> Recibido comando 'mkfile'")
-		fmt.Println(">> Propiedades recibidas: ", props)
-		return "Comando 'mkfile' procesado exitosamente (simulación)", nil
+		path, r, size, cont, valid, overwrite := Values_MKFILE(props)
+		if !valid {
+			return "", fmt.Errorf("parámetros de 'mkfile' no válidos")
+		}
+		MKFILE_EXECUTE(path, r, size, cont, overwrite)
+		return "Comando 'mkfile' ejecutado", nil
 
 	case "mkdir":
 		// Lógica para el comando 'mkdir'.

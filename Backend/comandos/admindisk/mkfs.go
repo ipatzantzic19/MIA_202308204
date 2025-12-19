@@ -446,6 +446,11 @@ func actualizarMBRParticionPrimaria(file *os.File, nodoM global.ParticionesMonta
 		}
 	}
 
+	// ACTUALIZAR SESION DE USUARIO LOGEADO
+	if global.UsuarioLogeado.Logged_in && utils.ToString(global.UsuarioLogeado.Mounted.ID_Particion[:]) == id_disco {
+		global.UsuarioLogeado.Mounted.Particion_P.Part_status = 1
+	}
+
 	return nil
 }
 
@@ -465,6 +470,11 @@ func actualizarEBRParticionLogica(file *os.File, nodoM global.ParticionesMontada
 			global.Mounted_Partitions[z].Particion_L.Part_mount = 1
 			break
 		}
+	}
+
+	// ACTUALIZAR SESION DE USUARIO LOGEADO
+	if global.UsuarioLogeado.Logged_in && utils.ToString(global.UsuarioLogeado.Mounted.Particion_L.Name[:]) == nombreParticion {
+		global.UsuarioLogeado.Mounted.Particion_L.Part_mount = 1
 	}
 
 	return nil

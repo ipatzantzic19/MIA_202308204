@@ -13,9 +13,9 @@ import (
 	"github.com/fatih/color"
 )
 
-func Values_MKFILE(instructions []string) (string, bool, int32, string, bool) {
+func Values_MKFILE(instructions []string) (string, bool, int32, string, bool, bool) {
 	var path, cont string
-	var r bool
+	var r, overwrite bool
 	var size int32 = 0
 
 	for _, valor := range instructions {
@@ -26,28 +26,29 @@ func Values_MKFILE(instructions []string) (string, bool, int32, string, bool) {
 			var value = utils.TieneContFile("MKFILE", valor)
 			cont = value
 		} else if strings.HasPrefix(strings.ToLower(valor), "r") {
-			var value = utils.TieneRPermitionsFile("MKFILE", valor)
-			r = value
+			r = true
 		} else if strings.HasPrefix(strings.ToLower(valor), "size") {
 			var value = utils.TieneSizeV2("MKFILE", valor)
 			size = value
+		} else if strings.HasPrefix(strings.ToLower(valor), "overwrite") {
+			overwrite = true
 		} else {
 			color.Yellow("[MKFILE]: Atributo no reconocido")
-			return "", false, -1, "", false
+			return "", false, -1, "", false, false
 		}
 	}
 	if path == "" || len(path) == 0 {
 		color.Red("[MKFILE]: No hay path")
-		return "", false, -1, "", false
+		return "", false, -1, "", false, false
 	}
 	if size < 0 {
 		color.Red("[MKFILE]: Size no valido")
-		return "", false, -1, "", false
+		return "", false, -1, "", false, false
 	}
-	return path, r, size, cont, true
+	return path, r, size, cont, true, overwrite
 }
 
-func MKFILE_EXECUTE(path string, r bool, _size int32, cont string) {
+func MKFILE_EXECUTE(path string, r bool, _size int32, cont string, overwrite bool) {
 	if !global.UsuarioLogeado.Logged_in {
 		color.Red("[MKDIR]: Usuario no logeado")
 		return
@@ -109,8 +110,17 @@ func MKFILE_EXECUTE(path string, r bool, _size int32, cont string) {
 
 	exist := utils.GetInodoFSystem(rutaS, 0, int32(len(rutaS)-1), utils.Sb_System.S_inode_start, nodo.Path)
 	if exist != -1 {
-		color.Red("[MKFILE]: Ya existe el archivo -> " + path)
-		return
+		if overwrite {
+			parentPath := ""
+			if len(rutaS) > 1 {
+				parentPath = strings.Join(rutaS[:len(rutaS)-1], "/")
+			}
+			parentInodoNum := utils.GetInodoFSystem(utils.SplitRuta(parentPath), 0, int32(len(rutaS)-2), utils.Sb_System.S_inode_start, nodo.Path)
+			utils.DeleteFile(exist, nodo.Path, parentInodoNum, rutaS[len(rutaS)-1])
+		} else {
+			color.Red("[MKFILE]: Ya existe el archivo -> " + path + ". ¿Desea sobrescribirlo? (use -overwrite)")
+			return
+		}
 	}
 
 	posInodoI := utils.Sb_System.S_inode_start
@@ -173,17 +183,18 @@ func MKFILE_EXECUTE(path string, r bool, _size int32, cont string) {
 		}
 		texto = utils.ToString(contenidoarchivo[:])
 	} else {
-		conta := 0
-		texto = ""
-		for i := 0; i < int(_size); i++ {
-			texto += fmt.Sprint(conta)
-			conta++
-			if conta == 10 {
-				conta = 0
+		if _size > 0 {
+			conta := 0
+			texto = ""
+			for i := 0; i < int(_size); i++ {
+				texto += fmt.Sprint(conta)
+				conta++
+				if conta == 10 {
+					conta = 0
+				}
 			}
-		}
-		if texto == "" {
-			texto += fmt.Sprint(0)
+		} else {
+			texto = ""
 		}
 	}
 
@@ -207,55 +218,40 @@ func MKFILE_EXECUTE(path string, r bool, _size int32, cont string) {
 		return
 	}
 
+	var freeBlocks []int32
 	var bit byte
 	start := utils.Sb_System.S_bm_block_start
-	end := start + utils.Sb_System.S_block_start
-	var cantContiguos int32 = 0
-	var inicioBM int32 = -1
-	var inicioB int32 = -1
-	var contadorA int32 = 0
-	for z := start; z < end; z++ {
-		if _, err := file.Seek(int64(z), 0); err != nil {
-			color.Red("[MKFILE]: Error en mover puntero")
+	end := start + utils.Sb_System.S_blocks_count
+	bloquesNecesarios := int32(len(contenido))
+
+	for i := start; i < end && len(freeBlocks) < int(bloquesNecesarios); i++ {
+		if _, err := file.Seek(int64(i), 0); err != nil {
+			color.Red("[MKFILE]: Error al mover el puntero")
 			return
 		}
 		if err := binary.Read(file, binary.LittleEndian, &bit); err != nil {
-			color.Red("[MKFILE]: Error en la lectura del archivo")
+			color.Red("[MKFILE]: Error al leer el bitmap de bloques")
 			return
 		}
-		//ocupado
-		if bit == '1' {
-			cantContiguos = 0
-			inicioB = -1
-			inicioBM = -1
-		} else {
-			if cantContiguos == 0 {
-				inicioBM = z
-				inicioB = contadorA
+		if bit == '0' {
+			freeBlocks = append(freeBlocks, i-start)
+			// MARCAR BLOQUE COMO OCUPADO
+			var uno byte = '1'
+			if _, err := file.Seek(int64(i), 0); err != nil {
+				color.Red("[MKFILE]: Error al mover el puntero para escribir en el bitmap")
+				return
 			}
-			cantContiguos++
+			if err := binary.Write(file, binary.LittleEndian, &uno); err != nil {
+				color.Red("[MKFILE]: Error al escribir en el bitmap de bloques")
+				return
+			}
 		}
-		if cantContiguos >= int32(len(contenido)) {
-			break
-		}
-		contadorA++
 	}
 
-	if (inicioBM == -1) || (cantContiguos != int32(len(contenido)) && (_size != 0)) {
-		color.Red("[MKFILE]: No hay suficientes bloques contiguos para actualizar archivo: " + rutaS[len(rutaS)-1])
+	if int32(len(freeBlocks)) < bloquesNecesarios {
+		color.Red("[MKFILE]: No hay suficientes bloques libres para crear el archivo")
+		// DEBERÍA LIBERAR LOS BLOQUES QUE YA OCUPÉ
 		return
-	}
-
-	for z := inicioBM; z < (inicioBM + int32(len(contenido))); z++ {
-		var uno byte = '1'
-		if _, err := file.Seek(int64(z), 0); err != nil {
-			color.Red("[MKFILE]: Error en mover puntero")
-			return
-		}
-		if err := binary.Write(file, binary.LittleEndian, &uno); err != nil {
-			color.Red("[MKFILE]: Error en la escritura del archivo")
-			return
-		}
 	}
 
 	utils.Sb_System.S_free_blocks_count -= int32(len(contenido))
@@ -320,16 +316,12 @@ func MKFILE_EXECUTE(path string, r bool, _size int32, cont string) {
 	newInodoA.I_s = tamanio
 	newInodoA.I_atime = utils.ObFechaInt()
 	newInodoA.I_mtime = utils.ObFechaInt()
+	newInodoA.I_uid = global.UsuarioLogeado.UID
+	newInodoA.I_gid = global.UsuarioLogeado.GID
+	newInodoA.I_perm = 664
 
-	contador := int32(0)
-	j := int32(0)
-	for j < int32(len(contenido)) {
-		utils.CambioCont = false
-		newInodoA = utils.AgregarArchivo(contenido[j], newInodoA, j, (inicioB + contador))
-		if utils.CambioCont {
-			contador++
-		}
-		j++
+	for i, blockIndex := range freeBlocks {
+		newInodoA = utils.AgregarArchivoSystem(contenido[i], newInodoA, int32(i), blockIndex)
 	}
 
 	if _, err := file.Seek(int64(posNewI), 0); err != nil {
@@ -359,10 +351,6 @@ func MKFILE_EXECUTE(path string, r bool, _size int32, cont string) {
 			color.Red("[MKFILE]: Error en la escritura del archivo")
 			return
 		}
-	}
-
-	if utils.Sb_System.S_filesistem_type == 3 {
-		utils.EscribirJournalSystem("mkfile", '1', path, "", nodo)
 	}
 
 	color.Green("[MKFILE]: Se creo archivo -> " + path)
