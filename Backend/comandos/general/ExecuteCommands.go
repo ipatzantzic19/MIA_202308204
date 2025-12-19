@@ -2,9 +2,9 @@ package general
 
 import (
 	adminDisk "Proyecto/comandos/admindisk"
+	adminfiles "Proyecto/comandos/adminfiles"
 	admingroup "Proyecto/comandos/admingroup"
 	adminusers "Proyecto/comandos/adminuser"
-	"Proyecto/comandos/commandGroups/files"
 	"strings"
 
 	"github.com/fatih/color"
@@ -81,7 +81,7 @@ func GlobalCom(lista []string) ([]string, []string, int) {
 
 		case "files":
 			color.Green("Administración de Archivos: %v", command)
-			msg, err := files.FilesCommandProps(command, comandos)
+			msg, err := adminfiles.FilesCommandProps(command, comandos)
 			if err != nil {
 				color.Red("Error: %v", err)
 				errores = append(errores, err.Error())
