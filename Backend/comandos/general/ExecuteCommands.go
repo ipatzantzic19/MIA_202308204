@@ -15,8 +15,7 @@ import (
 var commandGroups = map[string][]string{
 	"disk":    {"mkdisk", "fdisk", "rmdisk", "mount", "mounted", "mkfs"}, // Comandos relacionados con la administración de discos.
 	"reports": {"rep"},                                                   // Comandos para generar reportes.
-	"files":   {"mkfile", "mkdir"},                                       // Comandos para la administración de archivos.
-	"cat":     {"cat"},                                                   // Comando para mostrar el contenido de los archivos.
+	"files":   {"mkfile", "mkdir", "cat"},                                // Comandos para la administración de archivos.                                                  // Comando para mostrar el contenido de los archivos.
 	"users":   {"login", "logout"},                                       // Comandos para la administración de usuarios.
 	"groups":  {"mkgrp", "mkusr"},                                        // Comandos para la administración de grupos.
 }
@@ -90,9 +89,6 @@ func GlobalCom(lista []string) ([]string, []string, int) {
 				color.Green(msg)
 				mensajes = append(mensajes, msg)
 			}
-
-		case "cat":
-			color.Blue("Comando CAT")
 
 		case "users":
 			color.Yellow("Administración de Usuarios: %v", command)

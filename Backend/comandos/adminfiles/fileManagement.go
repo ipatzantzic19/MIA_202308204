@@ -27,6 +27,14 @@ func FilesCommandProps(command string, props []string) (string, error) {
 		MKDIR_EXECUTE(path, p)
 		return "[MKDIR]: Comando ejecutado", nil
 
+	case "cat":
+		files, valid := Values_CAT(props)
+		if !valid {
+			return "", fmt.Errorf("parámetros de 'cat' no válidos")
+		}
+		CAT_EXECUTE(files)
+		return "[CAT]: Comando ejecutado", nil
+
 	default:
 		// Si el comando no es 'mkfile' ni 'mkdir', se retorna un error para indicar que no es un comando de archivos válido.
 		return "", fmt.Errorf("comando de archivos '%s' no reconocido", command)
