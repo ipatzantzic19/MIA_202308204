@@ -90,7 +90,7 @@ func REP_EXECUTE(_namereport string, _name string, _id string) (string, error) {
 	case "mbr":
 		return Report_MBR(_id, ruta_completa_archivo)
 	case "disk":
-		return "Reporte 'disk' no implementado todavía.", nil
+		return Report_DISK(_id, ruta_completa_archivo)
 	case "inode":
 		return "Reporte 'inode' no implementado todavía.", nil
 	case "block":
