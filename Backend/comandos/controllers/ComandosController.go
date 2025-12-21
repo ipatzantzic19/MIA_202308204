@@ -23,37 +23,6 @@ RESPONSABILIDADES PRINCIPALES:
  7. Recopilar los resultados (mensajes de éxito y errores) de la ejecución.
  8. Devolver una respuesta JSON al frontend con la lista de comandos procesados y los resultados de su ejecución.
 
-FLUJO DE DATOS:
-
-	Frontend (UI)                Backend (Este Controlador)
-	      |                                |
-	      |---- POST /commands ----------->|
-	      |   (JSON: {"Comandos":          |
-	      |    "mkdisk -size=3000\n"       |
-	      |    "# un comentario\n"         |
-	      |    "fdisk -driveletter=A..."}) |
-	      |                                |
-	      |                         HandleCommand()
-	      |                         - Valida método POST y CORS.
-	      |                         - Decodifica el JSON.
-	      |                         - Valida que el campo "Comandos" no esté vacío.
-	      |                         - Divide el string en líneas.
-	      |                         - Filtra comentarios y líneas vacías.
-	      |                         - Llama a `general.GlobalCom()` para ejecutar.
-	      |                         - Recopila errores y mensajes.
-	      |                                |
-	      |<--- Respuesta JSON ------------|
-	      |   ({                             |
-	      |     "Respuesta": {              |
-	      |       "LstComandos": ["mkdisk...", "fdisk..."],
-	      |       "Mensajes": ["Disco Creado..."],
-	      |       "Errores": ["Error en fdisk..."]
-	      |     },                          |
-	      |     "Error": false             |
-	      |   })                            |
-	      |                                |
-	Actualiza la UI con los resultados
-
 =======================================================
 */
 func HandleCommand(w http.ResponseWriter, r *http.Request) {

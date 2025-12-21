@@ -5,6 +5,7 @@ import (
 	adminfiles "Proyecto/comandos/adminfiles"
 	admingroup "Proyecto/comandos/admingroup"
 	adminusers "Proyecto/comandos/adminuser"
+	reports "Proyecto/comandos/report"
 	"strings"
 
 	"github.com/fatih/color"
@@ -76,8 +77,16 @@ func GlobalCom(lista []string) ([]string, []string, int) {
 			}
 
 		case "reports":
-			color.Red("Administración de reportes: %v", command)
-
+			color.Cyan("Administración de reportes: %v", command)
+			msg, err := reports.ReportCommandProps(strings.ToUpper(command), comandos)
+			if err != nil {
+				color.Red("Error "+command+": %v", err)
+				errores = append(errores, err.Error())
+				contErrores++
+			} else {
+				color.Green(msg)
+				mensajes = append(mensajes, msg)
+			}
 		case "files":
 			color.Green("Administración de Archivos: %v", command)
 			msg, err := adminfiles.FilesCommandProps(command, comandos)
