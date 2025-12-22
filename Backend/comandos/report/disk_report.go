@@ -1,6 +1,7 @@
 package report
 
 import (
+	"Proyecto/Estructuras/structures"
 	"Proyecto/comandos/utils"
 	"bytes"
 	"encoding/binary"
@@ -12,170 +13,220 @@ import (
 	"strings"
 )
 
-// DiskSegment represents a portion of the disk, which can be a partition or free space.
+func escapeHTML(s string) string {
+	s = strings.ReplaceAll(s, "&", "&amp;")
+	s = strings.ReplaceAll(s, "<", "&lt;")
+	s = strings.ReplaceAll(s, ">", "&gt;")
+	s = strings.ReplaceAll(s, "\"", "&quot;")
+	s = strings.ReplaceAll(s, "'", "&apos;")
+	return s
+}
+
 type DiskSegment struct {
-	Type      string // "Primaria", "Extendida", "Logica", "Libre", "EBR"
+	Type      string
 	Name      string
 	Start     int32
 	Size      int32
-	Percent   float64
 	IsEBR     bool
 	Contained []*DiskSegment
 }
 
-// Report_DISK generates a visual report of the disk structure, including partitions and free space.
-func Report_DISK(id_particion string, ruta_reporte string) (string, error) {
-	// 1. Get disk path from mounted partition ID
-	particion_montada, encontrada := utils.ObtenerDiscoID(id_particion)
-	if !encontrada {
-		return "", fmt.Errorf("[REP-DISK]: No se encontró una partición montada con el id '%s'", id_particion)
-	}
-	diskPath := particion_montada.Path
+func Report_DISK(id string, rutaReporte string) (string, error) {
 
-	// 2. Read the MBR
-	mbr, success := utils.Obtener_FULL_MBR_FDISK(diskPath)
-	if !success {
-		return "", fmt.Errorf("[REP-DISK]: No se pudo leer el MBR del disco en '%s'", diskPath)
+	part, ok := utils.ObtenerDiscoID(id)
+	if !ok {
+		return "", fmt.Errorf("[REP-DISK]: No se encontró la partición con id %s", id)
 	}
-	diskTotalSize := float64(mbr.Mbr_tamano)
-	sizeOfMBR := int32(binary.Size(mbr))
 
-	// 3. Collect all partitions (primary and logical) into a single list
-	allParts := []DiskSegment{}
-	var extendedPartition *DiskSegment
+	mbr, ok := utils.Obtener_FULL_MBR_FDISK(part.Path)
+	if !ok {
+		return "", fmt.Errorf("[REP-DISK]: No se pudo leer el MBR del disco")
+	}
+
+	diskSize := float64(mbr.Mbr_tamano)
+	mbrSize := int32(binary.Size(mbr))
+
+	var parts []DiskSegment
 
 	for _, p := range mbr.Mbr_partitions {
-		if p.Part_status != '0' {
-			segment := DiskSegment{
+		if p.Part_status != '0' && p.Part_s > 0 {
+
+			seg := DiskSegment{
 				Name:  strings.TrimSpace(utils.ToString(p.Part_name[:])),
 				Start: p.Part_start,
 				Size:  p.Part_s,
 			}
+
 			if p.Part_type == 'E' {
-				segment.Type = "Extendida"
-				extendedPartition = &segment
+				seg.Type = "Extendida"
+
+				file, _ := os.Open(part.Path)
+				defer file.Close()
+
+				next := seg.Start
+				for next != -1 {
+					ebr := structures.EBR{}
+					file.Seek(int64(next), 0)
+					if err := binary.Read(file, binary.LittleEndian, &ebr); err != nil {
+						break
+					}
+
+					if ebr.Part_s > 0 {
+						seg.Contained = append(seg.Contained,
+							&DiskSegment{Type: "EBR", IsEBR: true, Size: int32(binary.Size(ebr))},
+							&DiskSegment{
+								Type:  "Logica",
+								Name:  strings.TrimSpace(utils.ToString(ebr.Name[:])),
+								Start: ebr.Part_start,
+								Size:  ebr.Part_s,
+							})
+					}
+					next = ebr.Part_next
+				}
 			} else {
-				segment.Type = "Primaria"
+				seg.Type = "Primaria"
 			}
-			allParts = append(allParts, segment)
+
+			parts = append(parts, seg)
 		}
 	}
 
-	// Read EBRs if an extended partition exists
-	if extendedPartition != nil {
-		ebrs, err := leerEBRs(diskPath, extendedPartition.Start)
-		if err != nil {
-			return "", fmt.Errorf("[REP-DISK]: Error al leer EBRs: %v", err)
-		}
-		for _, ebr := range ebrs {
-			extendedPartition.Contained = append(extendedPartition.Contained, &DiskSegment{
-				IsEBR: true, Size: int32(binary.Size(ebr)),
-			})
-			extendedPartition.Contained = append(extendedPartition.Contained, &DiskSegment{
-				Type:  "Logica",
-				Name:  strings.TrimSpace(utils.ToString(ebr.Name[:])),
-				Start: ebr.Part_start,
-				Size:  ebr.Part_s,
-			})
-		}
-	}
-
-	// 4. Sort partitions by start byte to easily find free space
-	sort.Slice(allParts, func(i, j int) bool {
-		return allParts[i].Start < allParts[j].Start
+	sort.Slice(parts, func(i, j int) bool {
+		return parts[i].Start < parts[j].Start
 	})
 
-	// 5. Build the final list of disk segments, including free space
-	diskLayout := []DiskSegment{}
-	currentPos := sizeOfMBR
+	var layout []DiskSegment
+	cursor := mbrSize
 
-	for _, p := range allParts {
-		// Free space before the current partition
-		if p.Start > currentPos {
-			freeSize := p.Start - currentPos
-			diskLayout = append(diskLayout, DiskSegment{
+	for _, p := range parts {
+		if p.Start > cursor {
+			layout = append(layout, DiskSegment{
 				Type: "Libre",
-				Size: freeSize,
+				Size: p.Start - cursor,
 			})
 		}
-		// Add the partition itself
-		diskLayout = append(diskLayout, p)
-		currentPos = p.Start + p.Size
+		layout = append(layout, p)
+		cursor = p.Start + p.Size
 	}
 
-	// Final free space at the end of the disk
-	if currentPos < mbr.Mbr_tamano {
-		freeSize := mbr.Mbr_tamano - currentPos
-		diskLayout = append(diskLayout, DiskSegment{
+	if cursor < mbr.Mbr_tamano {
+		layout = append(layout, DiskSegment{
 			Type: "Libre",
-			Size: freeSize,
+			Size: mbr.Mbr_tamano - cursor,
 		})
 	}
 
-	// 6. Generate DOT string
-	var dotBuffer bytes.Buffer
-	dotBuffer.WriteString("digraph G {\n")
-	dotBuffer.WriteString("\trankdir=TB;\n")
-	dotBuffer.WriteString("\tnode[shape=plaintext];\n")
-	dotBuffer.WriteString("\tdisk_table [label=<\n")
-	dotBuffer.WriteString("\t\t<table border='1' cellborder='1' cellspacing='0'>\n")
-	dotBuffer.WriteString("\t\t\t<tr>\n")
-
-	// MBR cell
-	mbrPercent := (float64(sizeOfMBR) / diskTotalSize) * 100
-	dotBuffer.WriteString(fmt.Sprintf("\t\t\t\t<td><b>MBR</b><br/>%.2f%%</td>\n", mbrPercent))
-
-	// Partition and Free Space cells
-	for _, segment := range diskLayout {
-		percent := (float64(segment.Size) / diskTotalSize) * 100
-		if segment.Type == "Extendida" {
-			dotBuffer.WriteString("\t\t\t\t<td>\n")
-			dotBuffer.WriteString("\t\t\t\t\t<table border='0'>\n")
-			dotBuffer.WriteString(fmt.Sprintf("\t\t\t\t\t\t<tr><td colspan='100'><b>Extendida</b><br/>%.2f%%</td></tr>\n", percent))
-			dotBuffer.WriteString("\t\t\t\t\t\t<tr>\n")
-			// Content of the extended partition
-			for _, containedSegment := range segment.Contained {
-				cPercent := (float64(containedSegment.Size) / diskTotalSize) * 100
-				if containedSegment.IsEBR {
-					dotBuffer.WriteString(fmt.Sprintf("\t\t\t\t\t\t\t<td><b>EBR</b><br/>%.2f%%</td>\n", cPercent))
-				} else {
-					dotBuffer.WriteString(fmt.Sprintf("\t\t\t\t\t\t\t<td>%s: %s<br/>%.2f%%</td>\n", containedSegment.Type, containedSegment.Name, cPercent))
-				}
-			}
-			dotBuffer.WriteString("\t\t\t\t\t\t</tr>\n")
-			dotBuffer.WriteString("\t\t\t\t\t</table>\n")
-			dotBuffer.WriteString("\t\t\t\t</td>\n")
+	// Fusionar segmentos "Libre" adyacentes y eliminar tamaños cero
+	var merged []DiskSegment
+	for _, s := range layout {
+		if s.Size <= 0 {
+			continue
+		}
+		if len(merged) == 0 {
+			merged = append(merged, s)
+			continue
+		}
+		last := &merged[len(merged)-1]
+		if last.Type == "Libre" && s.Type == "Libre" {
+			last.Size += s.Size
 		} else {
-			dotBuffer.WriteString(fmt.Sprintf("\t\t\t\t<td>%s %s<br/>%.2f%%</td>\n", segment.Type, segment.Name, percent))
+			merged = append(merged, s)
+		}
+	}
+	layout = merged
+
+	// Si existe un espacio libre inmediatamente después del MBR y es muy pequeño,
+	// lo incorporamos al MBR para evitar mostrar un celda "Libre" de 0%.
+	if len(layout) > 0 && layout[0].Type == "Libre" {
+		leadingFreePct := (float64(layout[0].Size) / diskSize) * 100
+		if leadingFreePct > 0 && leadingFreePct < 0.5 {
+			// añadir al tamaño del MBR visual y eliminar el segmento libre
+			mbrSize += layout[0].Size
+			layout = layout[1:]
 		}
 	}
 
-	dotBuffer.WriteString("\t\t\t</tr>\n")
-	dotBuffer.WriteString("\t\t</table>\n")
-	dotBuffer.WriteString("\t>];\n")
-	dotBuffer.WriteString("}\n")
+	// base para porcentajes: incluir todo el disco (MBR + particiones + libres)
+	base := diskSize
 
-	// 7. Write .dot file and execute Graphviz
-	tempDotFile := "VDIC-MIA/Rep/disk_temp.dot"
-	err := os.WriteFile(tempDotFile, dotBuffer.Bytes(), 0644)
-	if err != nil {
-		return "", fmt.Errorf("[REP-DISK]: Error al escribir el archivo .dot temporal: %v", err)
+	type pctSeg struct {
+		seg DiskSegment
+		pct float64
 	}
 
-	fileExtension := strings.TrimPrefix(filepath.Ext(ruta_reporte), ".")
-	if fileExtension == "" {
-		return "", fmt.Errorf("[REP-DISK]: La ruta del reporte no tiene una extensión válida")
+	var list []pctSeg
+	var total float64
+
+	for _, s := range layout {
+		p := (float64(s.Size) / base) * 100
+		list = append(list, pctSeg{s, p})
+		total += p
 	}
 
-	cmd := exec.Command("dot", "-T"+fileExtension, tempDotFile, "-o", ruta_reporte)
-	var stderr bytes.Buffer
-	cmd.Stderr = &stderr
-	err = cmd.Run()
-	if err != nil {
-		return "", fmt.Errorf("[REP-DISK]: Error al ejecutar 'dot'. Stderr: %s", stderr.String())
+	if len(list) > 0 {
+		list[len(list)-1].pct += 100 - total
 	}
 
-	os.Remove(tempDotFile)
+	var dot bytes.Buffer
+	dot.WriteString("digraph G {\n")
+	dot.WriteString("\tnode [shape=plaintext];\n")
+	dot.WriteString("\tdisk [label=<\n")
+	dot.WriteString("<table border='4' cellborder='2' cellspacing='4' color='#4A148C'>\n<tr>\n")
 
-	return fmt.Sprintf("Reporte DISK generado exitosamente en '%s'", ruta_reporte), nil
+	// MBR
+	dot.WriteString("<td bgcolor='#E1BEE7'><b>MBR</b></td>\n")
+
+	for _, item := range list {
+		s := item.seg
+		p := item.pct
+
+		switch s.Type {
+
+		case "Primaria":
+			dot.WriteString(fmt.Sprintf(
+				"<td bgcolor='#CE93D8'><b>Primaria</b><br/>%s<br/>%.2f%%</td>\n",
+				escapeHTML(s.Name), p))
+
+		case "Libre":
+			dot.WriteString(fmt.Sprintf(
+				"<td bgcolor='#F3E5F5'><b>Libre</b><br/>%.2f%%</td>\n", p))
+
+		case "Extendida":
+			dot.WriteString("<td bgcolor='#BA68C8'>")
+			dot.WriteString("<table border='3' cellborder='2' cellspacing='3' color='#4A148C'>")
+			dot.WriteString(fmt.Sprintf("<tr><td colspan='20'><b>Extendida</b><br/>%.2f%%</td></tr><tr>", p))
+
+			for _, c := range s.Contained {
+				if c.IsEBR {
+					dot.WriteString("<td bgcolor='#D1C4E9'><b>EBR</b></td>")
+				} else {
+					cp := (float64(c.Size) / base) * 100
+					dot.WriteString(fmt.Sprintf(
+						"<td bgcolor='#B39DDB'><b>Lógica</b><br/>%s<br/>%.2f%%</td>",
+						escapeHTML(c.Name), cp))
+				}
+			}
+			dot.WriteString("</tr></table></td>\n")
+		}
+	}
+
+	dot.WriteString("</tr></table>>];\n}\n")
+
+	tempDot := "VDIC-MIA/Rep/disk_temp.dot"
+	os.WriteFile(tempDot, dot.Bytes(), 0644)
+
+	ext := strings.TrimPrefix(filepath.Ext(rutaReporte), ".")
+	if ext == "" {
+		ext = "png"
+		rutaReporte += ".png"
+	}
+
+	cmd := exec.Command("dot", "-T"+ext, tempDot, "-o", rutaReporte)
+	if err := cmd.Run(); err != nil {
+		return "", err
+	}
+
+	os.Remove(tempDot)
+
+	return fmt.Sprintf("[REP-DISK]: Reporte generado correctamente en %s", rutaReporte), nil
 }
